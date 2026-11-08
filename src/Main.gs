@@ -62,6 +62,10 @@ function describe_(plan) { return plan.tag + ' T=' + plan.T0 + ' 수량=' + plan
 function send_(t, o, dvsnMap) {
   if (isDry_()) return 'DRY-' + o.id;
   var d = dvsnMap[o.kind];
+  if (t.market === 'US' && KIS.mock()) {                          // 문서: 해외 모의투자는 지정가(00)만 가능 → LOC/MOC를 지정가로 대체(동작 시험용)
+    var px = o.kind === 'MOC' ? KIS.priceUS(t.code, t.excd) : o.price;
+    return KIS.orderUS(t.code, CFG.EXCD[t.excd] || 'NASD', o.side, o.qty, px, '00');
+  }
   return t.market === 'KR' ? KIS.orderKR(t.code, o.side, o.qty, d.price0 ? 0 : o.price, d.code) : KIS.orderUS(t.code, CFG.EXCD[t.excd] || 'NASD', o.side, o.qty, d.price0 ? 0 : o.price, d.code);
 }
 var DVSN_KR = { LOC: { code: '00' }, LIMIT: { code: '00' }, MOC: { code: '01', price0: true } };      // 국내: LOC=종가단일가 지정가(15:20)
@@ -79,7 +83,7 @@ var PHASES = {
   /** 15:20 국내: 나머지 주문(LOC 대체 = 종가단일가 지정가). 잔고 재검증 후 전송. 이후 취소/정정 불가 */
   KR_CLOSE: function (t, now) {
     var plan = loadPlan_(t); if (!plan || plan.date !== now.ymd) throw new Error('오늘 계획 없음(KR_OPEN 미실행)');
-    var held = isDry_() ? plan.qty0 : KIS.holdingKR(t.code), fills = isDry_() ? {} : KIS.fillsKR(now.ymd), targetLeft = 0, i, o;
+    var held = isDry_() ? plan.qty0 : KIS.holdingKR(t.code), fills = isDry_() ? {} : KIS.fillsKR(now.ymd, t.code), targetLeft = 0, i, o;
     for (i = 0; i < plan.orders.length; i++) { o = plan.orders[i]; if (o.group === 'target') { var f = fills[plan.odno[o.id]]; targetLeft += o.qty - (f ? f.qty : 0); } }
     var sellable = held - targetLeft;                               // 오늘 더 팔 수 있는 수량
     plan.orders.forEach(function (o) {
@@ -90,7 +94,7 @@ var PHASES = {
     plan.status = 'ORDERED'; savePlan_(t, plan); log_('KR_CLOSE', t.tab, '주문 전송 ' + JSON.stringify(plan.odno) + (isDry_() ? ' (DRY_RUN)' : ''));
   },
   /** 15:35 국내: 체결 반영 → 시트 행 추가, T/모드 갱신 */
-  KR_SETTLE: function (t, now) { settle_(t, now, now.ymd, function () { return KIS.priceKR(t.code); }, function () { return KIS.fillsKR(now.ymd); }); },
+  KR_SETTLE: function (t, now) { settle_(t, now, now.ymd, function () { return KIS.priceKR(t.code); }, function () { return KIS.fillsKR(now.ymd, t.code); }); },
   /** 15:40 국내: 남은 예산 시간외종가 추가매수(옵션). 체결 안 되면 잔금으로 남김 */
   KR_TOPUP: function (t, now) {
     if (!t.topup) return;
@@ -102,7 +106,7 @@ var PHASES = {
   /** 16:10 국내: 시간외종가 체결 확인 → 행 추가 (T는 건드리지 않음) */
   KR_FINAL: function (t, now) {
     var plan = loadPlan_(t); if (!plan || !plan.topupOdno || plan.topupDone || isDry_()) return;
-    var f = KIS.fillsKR(now.ymd)[plan.topupOdno];
+    var f = KIS.fillsKR(now.ymd, t.code)[plan.topupOdno];
     if (f) { appendRows(t, now.dash, plan.close, plan.newT, [{ group: 'topup', side: 'BUY', qty: f.qty, price: f.price }]); log_('KR_FINAL', t.tab, '시간외종가 체결 ' + f.qty + '@' + f.price); }
     else log_('KR_FINAL', t.tab, '시간외종가 미체결 → 잔금 유지');
     plan.topupDone = true; savePlan_(t, plan);
