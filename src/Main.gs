@@ -25,11 +25,16 @@ function tick() {
       var key = 'done:' + now.ymd + ':' + s.phase;
       if (p.getProperty(key)) return;
       p.setProperty(key, '1');                                    // 먼저 표시 → 중복 실행 방지(실패 시 알림, 자동 재시도는 하지 않음: 주문 중복 위험)
-      if (s.market === 'KR' && !KIS.isKrOpen(now.ymd)) { log_(s.phase, '-', '휴장일 → 건너뜀'); return; }
+      if (s.market === 'KR' && !krOpen_(now.ymd)) { log_(s.phase, '-', '휴장일 → 건너뜀'); return; }
       runPhase_(s.phase, now);
     });
     if (now.min === 5) cleanupFlags_(now);
   } finally { lock.releaseLock(); }
+}
+/** 휴장일 조회는 첫 국내 종목의 계정으로 1회만 (결과는 날짜별 캐시) */
+function krOpen_(ymd) {
+  var ts = loadTickers('KR'); if (!ts.length) return false;
+  KIS.use(ts[0].acct); return KIS.isKrOpen(ymd);
 }
 function cleanupFlags_(now) {
   var p = PropertiesService.getScriptProperties(), all = p.getProperties(), cut = Number(Utilities.formatDate(new Date(Date.now() - 5 * 86400000), 'Asia/Seoul', 'yyyyMMdd'));
@@ -40,7 +45,7 @@ function runPhase_(phase, now) {
   var market = phase.slice(0, 2), t0 = Date.now();
   loadTickers(market).forEach(function (t) {
     if (Date.now() - t0 > 270000) { alert_('시간 초과 위험', phase + ' ' + t.tab + ' 건너뜀'); return; }     // 6분 제한 보호
-    try { PHASES[phase](t, now); }
+    try { KIS.use(t.acct); PHASES[phase](t, now); }
     catch (e) { alert_(phase + ' 실패: ' + t.tab, String(e && e.stack || e)); log_(phase, t.tab, 'ERROR ' + e); }
   });
 }
@@ -148,5 +153,5 @@ function settle_(t, now, tradeYmd, getClose, getFills) {
 
 /** 수동 점검용: 오늘 계획을 주문 없이 로그에 출력 */
 function previewToday() {
-  loadTickers('KR').concat(loadTickers('US')).forEach(function (t) { var p = makePlan_(t, kstNow_()); log_('PREVIEW', t.tab, describe_(p)); Logger.log(describe_(p)); });
+  loadTickers('KR').concat(loadTickers('US')).forEach(function (t) { KIS.use(t.acct); var p = makePlan_(t, kstNow_()); log_('PREVIEW', t.tab, describe_(p)); Logger.log(describe_(p)); });
 }

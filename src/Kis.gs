@@ -1,16 +1,24 @@
 /** 한국투자증권 Open API 래퍼.  ※ TR_ID·필드명은 변경될 수 있으니 KIS 공식 문서와 대조해 확인하세요. */
-var KIS = {};
-KIS.base = function () { return String(prop_('KIS_MOCK', 'false')) === 'true' ? 'https://openapivts.koreainvestment.com:29443' : 'https://openapi.koreainvestment.com:9443'; };
-KIS.mock = function () { return String(prop_('KIS_MOCK', 'false')) === 'true'; };
+var KIS = { _acct: '' };
+/** 계정 선택: 시트 P9의 앞 4자리 → 아래 속성들을 계정별로 읽음 (KIS_APP_KEY_7441 …) */
+KIS.use = function (acct) {
+  acct = String(acct || '').trim();
+  if (!acct) throw new Error('계정(P9) 값이 비어 있습니다');
+  KIS._acct = acct;
+  ['APP_KEY', 'APP_SECRET', 'CANO', 'ACNT_PRDT_CD'].forEach(function (n) { if (!prop_('KIS_' + n + '_' + acct, '')) throw new Error('스크립트 속성 누락: KIS_' + n + '_' + acct); });
+};
+KIS.p = function (name) { return prop_('KIS_' + name + '_' + KIS._acct, ''); };
+KIS.base = function () { return KIS.mock() ? 'https://openapivts.koreainvestment.com:29443' : 'https://openapi.koreainvestment.com:9443'; };
+KIS.mock = function () { return String(prop_('KIS_MOCK_' + KIS._acct, prop_('KIS_MOCK', 'false'))) === 'true'; };
 KIS.tr = function (real, mock) { return KIS.mock() ? mock : real; };
 
 KIS.token = function () {
-  var sfx = KIS.mock() ? '_M' : '_R';     // 실전/모의 토큰은 서로 다름
+  var sfx = '_' + KIS._acct + (KIS.mock() ? '_M' : '_R');     // 실전/모의 토큰은 서로 다름
   var p = PropertiesService.getScriptProperties(), tk = p.getProperty('KIS_TOKEN' + sfx), exp = Number(p.getProperty('KIS_TOKEN_EXP' + sfx) || 0);
   if (tk && Date.now() < exp - 10 * 60 * 1000) return tk;
   var res = UrlFetchApp.fetch(KIS.base() + '/oauth2/tokenP', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    payload: JSON.stringify({ grant_type: 'client_credentials', appkey: prop_('KIS_APPKEY'), appsecret: prop_('KIS_APPSECRET') })
+    payload: JSON.stringify({ grant_type: 'client_credentials', appkey: KIS.p('APP_KEY'), appsecret: KIS.p('APP_SECRET') })
   });
   var j = JSON.parse(res.getContentText());
   if (!j.access_token) throw new Error('KIS 토큰 발급 실패: ' + res.getContentText());
@@ -22,7 +30,7 @@ KIS.token = function () {
 KIS.call = function (method, path, trId, params, retry, trCont) {
   var url = KIS.base() + path, opt = { method: method, muteHttpExceptions: true, headers: {
     'content-type': 'application/json; charset=utf-8', authorization: 'Bearer ' + KIS.token(),
-    appkey: prop_('KIS_APPKEY'), appsecret: prop_('KIS_APPSECRET'), tr_id: trId, custtype: 'P' } };
+    appkey: KIS.p('APP_KEY'), appsecret: KIS.p('APP_SECRET'), tr_id: trId, custtype: 'P' } };
   if (trCont) opt.headers.tr_cont = trCont;
   if (method === 'get') {
     url += '?' + Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
@@ -46,7 +54,7 @@ KIS.paged = function (path, trId, params, rowsKey, ctxKeys) {
   }
   return rows;
 };
-KIS.acct = function () { return { CANO: prop_('KIS_ACCOUNT'), ACNT_PRDT_CD: prop_('KIS_ACNT_PRDT', '01') }; };
+KIS.acct = function () { return { CANO: KIS.p('CANO'), ACNT_PRDT_CD: KIS.p('ACNT_PRDT_CD') }; };
 function merge_(a, b) { for (var k in b) a[k] = b[k]; return a; }
 
 // ── 시세 ──

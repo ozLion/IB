@@ -1,9 +1,9 @@
-/** ===== 설정 ===== 민감값(키·계좌)은 코드에 넣지 말고 [프로젝트 설정 → 스크립트 속성]에 저장하세요.
- *  KIS_APPKEY, KIS_APPSECRET, KIS_ACCOUNT(앞 8자리), KIS_ACNT_PRDT(보통 01)
- *  KIS_MOCK = true|false   (모의투자 여부)
- *  DRY_RUN  = true|false   (true면 주문 전송 없이 로그만. 기본 true → 검증 후 false로)
- *  ALERT_EMAIL = (선택) 오류 알림 받을 이메일
- *  US_ORDER_TIME = 23:35 (서머타임 22:35),  US_SETTLE_TIME = 07:00
+/** ===== 설정 ===== 민감값은 코드에 넣지 말고 [프로젝트 설정 → 스크립트 속성]에 저장하세요.
+ *  종목 탭의 P9 셀 = 계정 앞 4자리(예: 7441). 그 값이 속성 이름 뒤에 붙습니다.
+ *  계정별 (필수):  KIS_APP_KEY_<계정>, KIS_APP_SECRET_<계정>, KIS_CANO_<계정>(계좌 앞 8자리), KIS_ACNT_PRDT_CD_<계정>(보통 01)
+ *  계정별 (선택):  KIS_MOCK_<계정> = true|false (없으면 공통 KIS_MOCK, 그것도 없으면 false=실전)
+ *  공통:           DRY_RUN = true|false (true면 주문 전송 없이 로그만. 기본 true), KIS_MOCK(기본 모의 여부),
+ *                  SHEET_ID(독립 프로젝트일 때), ALERT_EMAIL(선택), US_ORDER_TIME(23:35, 서머 22:35), US_SETTLE_TIME(07:00)
  */
 var CFG = {
   SHEET_SETTINGS: '자동설정',      // 종목별 설정 표 (installSheets()가 생성)
@@ -11,7 +11,7 @@ var CFG = {
   SHEET_LOG: '자동로그',
   SHEET_HIST: '자동종가',          // 날짜/종목/종가 (리버스 5일 평균용)
   // 사용자 시트(종목 탭) 열 매핑 — 현재 KODEX 탭 기준. 바꾸면 여기만 수정.
-  TAB: { HEADER_ROW: 10, FIRST_ROW: 11, DATE: 'A', T: 'B', QTY: 'C', PRICE: 'D', CLOSE: 'E', AVG: 'F', CASH: 'N', PRINCIPAL_CELL: 'B3',
+  TAB: { HEADER_ROW: 10, FIRST_ROW: 11, DATE: 'A', T: 'B', QTY: 'C', PRICE: 'D', CLOSE: 'E', AVG: 'F', CASH: 'N', PRINCIPAL_CELL: 'B3', ACCT_CELL: 'P9',
           FORMULA_FROM: 'F', FORMULA_TO: 'N', MEMO: 'M' },   // 새 행에 직전 행의 F~N 수식 복사, 메모(M)는 비움
   // 스케줄(KST). 윈도우 안에서만 실행 → 트리거 지연/중복 실행 방지
   SCHEDULE: [

@@ -12,7 +12,9 @@
 | Config.gs | 스케줄·시트 열 매핑 |
 
 ## 설치
-1. 스크립트 속성: `KIS_APPKEY`, `KIS_APPSECRET`, `KIS_ACCOUNT`(8자리), `KIS_ACNT_PRDT`(01), `KIS_MOCK`(true 권장 시작), `DRY_RUN`(true), 독립 프로젝트면 `SHEET_ID`, 선택 `ALERT_EMAIL`, `US_ORDER_TIME`(기본 23:35, 서머타임 22:35), `US_SETTLE_TIME`(07:00)
+1. 스크립트 속성 (계정별 — 종목 탭 `P9` 셀의 계정 앞 4자리를 뒤에 붙임, 예: 7441):
+   `KIS_APP_KEY_7441`, `KIS_APP_SECRET_7441`, `KIS_CANO_7441`(계좌 앞 8자리), `KIS_ACNT_PRDT_CD_7441`(01), 선택 `KIS_MOCK_7441`(true/false)
+   공통: `KIS_MOCK`(계정별 값이 없을 때 기본, 시작은 true 권장), `DRY_RUN`(true), 독립 프로젝트면 `SHEET_ID`, 선택 `ALERT_EMAIL`, `US_ORDER_TIME`(기본 23:35, 서머타임 22:35), `US_SETTLE_TIME`(07:00)
 2. `installSheets()` 실행 → `자동설정/자동상태/자동로그/자동종가` 시트 생성. `자동설정`에 종목 행 작성(사용=Y).
 3. `previewToday()` 로 오늘 주문 계획을 주문 없이 확인.
 4. `installTriggers()` 1회 실행 (매분 `tick`).

@@ -11,7 +11,7 @@ vm.runInContext(`this.IB=IB;this.PHASES=PHASES;this.KIS=KIS;`,ctx);
 // 스텁
 let SHEET={T:5,qty:100,avg:70000,cash:8000000,lastClose:70000,mode:'N',revDay:0};
 Object.assign(ctx,{
- loadTickers:m=>[{tab:'KODEX',code:'122630',market:'KR',excd:'',P:{market:'KR',type:'ETF',N:40,starBase:.15,targetPct:.15,revExitPct:-.15,ladderStep:1,ladderCount:5,bigPct:.12,quarterMinOne:false},topup:true}],
+ loadTickers:m=>[{tab:'KODEX',acct:'7441',code:'122630',market:'KR',excd:'',P:{market:'KR',type:'ETF',N:40,starBase:.15,targetPct:.15,revExitPct:-.15,ladderStep:1,ladderCount:5,bigPct:.12,quarterMinOne:false},topup:true}],
  readState:()=>({...SHEET}),histCloses_:()=>[70000,70500,69800,70200,70000],saveClose_(){},saveMode_:(t,m,r)=>stateSaved.push([m,r]),setLastT_(){},
  log_:(p,t,m)=>logs.push(p+' '+m),alert_:(s,b)=>logs.push('ALERT '+s+' '+b),appendRows:(t,d,c,T,r)=>appended.push({d,c,T,r}),
  isDry_:()=>false});

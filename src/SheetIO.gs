@@ -19,7 +19,10 @@ function loadTickers(market) {
   var v = sh.getRange(2, 1, sh.getLastRow() - 1, SETTINGS_HEADER.length).getValues(), out = [];
   v.forEach(function (r) {
     if (String(r[0]).toUpperCase() !== 'Y' || String(r[3]).toUpperCase() !== market) return;
-    out.push({ tab: String(r[1]), code: String(r[2]).replace(/^'/, '').trim(), market: market, excd: String(r[4] || 'NAS'),
+    var tabSh = ss_().getSheetByName(String(r[1]));
+    if (!tabSh) { log_('LOAD', String(r[1]), '시트 탭 없음 → 건너뜀'); return; }
+    var acct = String(tabSh.getRange(CFG.TAB.ACCT_CELL).getValue()).trim();
+    out.push({ tab: String(r[1]), acct: acct, code: String(r[2]).replace(/^'/, '').trim(), market: market, excd: String(r[4] || 'NAS'),
       P: { market: market, type: String(r[5] || 'ETF').toUpperCase(), N: Number(r[6]), starBase: pct_(r[7]), targetPct: pct_(r[8]), revExitPct: pct_(r[9]) || -0.15,
            ladderStep: Number(r[10]) || 1, ladderCount: Number(r[11]) || 5, bigPct: pct_(r[12]) || CFG.BIG_PCT, quarterMinOne: String(r[14]).toUpperCase() === 'Y' },
       topup: String(r[13]).toUpperCase() === 'Y' });
