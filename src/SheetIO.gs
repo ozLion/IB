@@ -73,6 +73,22 @@ function planFromSheet_(t, now) {
       add('target', 'SELL', 'LIMIT', q2, ceilP(num_(p.get(P.SELL2_PRICE))), '지정가 매도(3/4)');
     }
   }
+  // 국내: 상·하한가 밖의 주문은 접수 거절되므로 제외 (체결될 수 없는 가격이라 결과 동일)
+  if (t.market === 'KR' && plan.orders.length) {
+    try {
+      KIS.use(t.acct);
+      var lim = KIS.limitsKR(t.code);
+      if (lim.upper > 0 && lim.lower > 0) {
+        var kept = [], dropped = [];
+        plan.orders.forEach(function (o) {
+          if (o.kind === 'MOC') { kept.push(o); return; }
+          if (o.price < lim.lower || o.price > lim.upper) dropped.push(o.qty + '@' + o.price); else kept.push(o);
+        });
+        plan.orders = kept; plan.limits = lim;
+        if (dropped.length) plan.notes.push('가격제한폭(하한 ' + lim.lower + ' / 상한 ' + lim.upper + ') 밖 주문 ' + dropped.length + '건 제외: ' + dropped.join(', '));
+      }
+    } catch (e) { plan.notes.push('⚠ 상·하한가 조회 실패 → 필터 미적용: ' + e.message); }
+  }
   // 교차검증 (실패해도 시트 값을 따름)
   try {
     var ref = IB.plan(t.P, { mode: mode, T: S.T, qty: S.qty, avg: S.avg, cash: S.cash, revDay: S.revDay }, { prevClose: num_(p.get(P.PREV_CLOSE)), closes: closesFromTab_(sh, 5) });

@@ -66,6 +66,11 @@ KIS.priceUS = function (sym, excd) {
   var j = KIS.call('get', '/uapi/overseas-price/v1/quotations/price', 'HHDFS00000300', { AUTH: '', EXCD: excd, SYMB: sym });
   return Number(j.output.last);
 };
+/** 국내 상·하한가 (가격제한폭 ±30%, 전일 종가 기준) — 하한가 미만/상한가 초과 주문은 접수 거절됨 */
+KIS.limitsKR = function (code) {
+  var j = KIS.call('get', '/uapi/domestic-stock/v1/quotations/inquire-price', 'FHKST01010100', { FID_COND_MRKT_DIV_CODE: 'J', FID_INPUT_ISCD: code });
+  return { upper: Number(j.output.stck_mxpr), lower: Number(j.output.stck_llam), base: Number(j.output.stck_sdpr) };
+};
 /** 국내 영업일 여부 (휴장일 조회, 실패 시 평일이면 true) */
 KIS.isKrOpen = function (yyyymmdd) {
   var p = PropertiesService.getScriptProperties(), ck = 'hol:' + yyyymmdd, c = p.getProperty(ck);
