@@ -2,15 +2,26 @@
 
 /** 1단계: 네트워크 없이 속성·시트 설정만 점검 */
 function checkSetup() {
-  var out = [], ok = true;
+  var out = [], ok = true, total = 0;
   function line(s) { out.push(s); }
   var p = PropertiesService.getScriptProperties();
   line('── 공통 속성 ──');
   ['DRY_RUN', 'KIS_MOCK'].forEach(function (k) { line(k + ' = ' + (p.getProperty(k) === null ? '(없음 → 기본값 사용)' : p.getProperty(k))); });
   line('SHEET_ID = ' + (prop_('SHEET_ID', '') ? '있음' : '(없음 → 시트에 연결된 프로젝트로 동작)'));
   var sh; try { sh = ss_(); line('스프레드시트 연결: OK (' + sh.getName() + ')'); } catch (e) { ok = false; line('❌ 스프레드시트에 연결 못 함: ' + e.message + ' → 독립 프로젝트면 SHEET_ID 필요'); return finish_(out, ok); }
+  var st = sh.getSheetByName(CFG.SHEET_SETTINGS);
+  if (!st) { ok = false; line('❌ "' + CFG.SHEET_SETTINGS + '" 시트가 없습니다 → installSheets() 를 먼저 실행하세요'); return finish_(out, ok); }
+  line('── ' + CFG.SHEET_SETTINGS + ' 시트 진단 (데이터 ' + Math.max(0, st.getLastRow() - 1) + '줄) ──');
+  if (st.getLastRow() >= 2) st.getRange(2, 1, st.getLastRow() - 1, 4).getValues().forEach(function (r, i) {
+    var why = [];
+    if (String(r[0]).trim().toUpperCase() !== 'Y') why.push('A열(사용)이 "Y"가 아님: "' + r[0] + '"');
+    var m = String(r[3]).trim().toUpperCase(); if (m !== 'KR' && m !== 'US') why.push('D열(시장)이 KR/US가 아님: "' + r[3] + '"');
+    if (!sh.getSheetByName(String(r[1]))) why.push('B열 탭 이름 "' + r[1] + '" 에 해당하는 탭이 없음(공백·글자 확인)');
+    line((i + 2) + '행 [' + r[1] + ']: ' + (why.length ? '건너뜀 → ' + why.join(' / ') : 'OK'));
+  });
   ['KR', 'US'].forEach(function (mk) {
     var ts = []; try { ts = loadTickers(mk); } catch (e) { ok = false; line('❌ 자동설정 읽기 실패: ' + e.message + ' (installSheets 실행 여부 확인)'); }
+    total += ts.length;
     ts.forEach(function (t) {
       line('── ' + mk + ' / ' + t.tab + ' (' + t.code + ') ──');
       if (!t.acct) { ok = false; line('❌ ' + CFG.TAB.ACCT_CELL + ' 셀(계정 앞 4자리)이 비어 있음'); return; }
@@ -33,6 +44,7 @@ function checkSetup() {
     });
     if (!ts.length) line('(' + mk + ' 사용 종목 없음)');
   });
+  if (!total) { ok = false; line('❌ 자동설정 시트에 사용=Y 인 종목이 없습니다. 탭마다 한 줄씩 추가하세요(시장 KR/US, 시트 탭 이름은 실제 탭과 동일하게).'); }
   finish_(out, ok);
 }
 
