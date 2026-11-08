@@ -55,14 +55,7 @@ function planKey_(t) { return 'plan:' + t.tab; }
 function savePlan_(t, o) { PropertiesService.getScriptProperties().setProperty(planKey_(t), JSON.stringify(o)); }
 function loadPlan_(t) { var s = PropertiesService.getScriptProperties().getProperty(planKey_(t)); return s ? JSON.parse(s) : null; }
 
-function makePlan_(t, now) {
-  var S = readState(t), closes = histCloses_(t.code, 5), prev = closes.length ? closes[closes.length - 1] : (S.lastClose || (t.market === 'KR' ? KIS.priceKR(t.code) : KIS.priceUS(t.code, t.excd)));
-  if (!closes.length && S.lastClose) closes = [S.lastClose];
-  var plan = IB.plan(t.P, S, { prevClose: prev, closes: closes });
-  plan.date = now.ymd; plan.S = S;
-  return plan;
-}
-function describe_(plan) { return plan.tag + ' T=' + plan.T0 + ' 수량=' + plan.qty0 + ' 예산=' + Math.round(plan.budget) + ' ' + plan.orders.map(function (o) { return o.id + ':' + o.side + o.kind + ' ' + o.qty + '@' + o.price; }).join(' | ') + (plan.errors.length ? ' ⚠ ' + plan.errors.join('; ') : ''); }
+function describe_(plan) { return plan.tag + ' T=' + plan.T0 + ' 수량=' + plan.qty0 + ' 예산=' + Math.round(plan.budget) + ' ' + plan.orders.map(function (o) { return o.id + ':' + o.side + o.kind + ' ' + o.qty + '@' + o.price; }).join(' | ') + (plan.errors.length ? ' ⚠ ' + plan.errors.join('; ') : '') + (plan.notes && plan.notes.length ? ' ℹ ' + plan.notes.join('; ') : ''); }
 
 function send_(t, o, dvsnMap) {
   if (isDry_()) return 'DRY-' + o.id;
@@ -79,8 +72,9 @@ var DVSN_US = { LOC: { code: '34' }, LIMIT: { code: '00' }, MOC: { code: '33', p
 var PHASES = {
   /** 09:05 국내: 오늘 계획 수립 + 3/4 지정가 매도(장중 일반 지정가, 당일 유효) */
   KR_OPEN: function (t, now) {
-    var plan = makePlan_(t, now); plan.status = 'PLANNED'; plan.odno = {};
+    var plan = planFromSheet_(t, now); plan.status = 'PLANNED'; plan.odno = {};
     log_('KR_OPEN', t.tab, describe_(plan));
+    if (plan.manual) { savePlan_(t, plan); return; }
     if (plan.errors.length) alert_('계획 오류: ' + t.tab, describe_(plan));
     plan.orders.filter(function (o) { return o.group === 'target'; }).forEach(function (o) { plan.odno[o.id] = send_(t, o, DVSN_KR); });
     savePlan_(t, plan);
@@ -88,6 +82,7 @@ var PHASES = {
   /** 15:20 국내: 나머지 주문(LOC 대체 = 종가단일가 지정가). 잔고 재검증 후 전송. 이후 취소/정정 불가 */
   KR_CLOSE: function (t, now) {
     var plan = loadPlan_(t); if (!plan || plan.date !== now.ymd) throw new Error('오늘 계획 없음(KR_OPEN 미실행)');
+    if (plan.manual) return;
     var held = isDry_() ? plan.qty0 : KIS.holdingKR(t.code), fills = isDry_() ? {} : KIS.fillsKR(now.ymd, t.code), targetLeft = 0, i, o;
     for (i = 0; i < plan.orders.length; i++) { o = plan.orders[i]; if (o.group === 'target') { var f = fills[plan.odno[o.id]]; targetLeft += o.qty - (f ? f.qty : 0); } }
     var sellable = held - targetLeft;                               // 오늘 더 팔 수 있는 수량
@@ -112,14 +107,15 @@ var PHASES = {
   KR_FINAL: function (t, now) {
     var plan = loadPlan_(t); if (!plan || !plan.topupOdno || plan.topupDone || isDry_()) return;
     var f = KIS.fillsKR(now.ymd, t.code)[plan.topupOdno];
-    if (f) { appendRows(t, now.dash, plan.close, plan.newT, [{ group: 'topup', side: 'BUY', qty: f.qty, price: f.price }]); log_('KR_FINAL', t.tab, '시간외종가 체결 ' + f.qty + '@' + f.price); }
+    if (f) { appendRows(t, now.dash, plan.close, plan.newT, [{ group: 'topup', side: 'BUY', qty: f.qty, price: f.price }], plan.star, plan.tag); log_('KR_FINAL', t.tab, '시간외종가 체결 ' + f.qty + '@' + f.price); }
     else log_('KR_FINAL', t.tab, '시간외종가 미체결 → 잔금 유지');
     plan.topupDone = true; savePlan_(t, plan);
   },
   /** 미국: 장 시작 후 계획 + 전체 주문(LOC 34, 지정가 00, MOC 33) */
   US_ORDER: function (t, now) {
-    var plan = makePlan_(t, now); plan.status = 'ORDERED'; plan.odno = {};
+    var plan = planFromSheet_(t, now); plan.status = 'ORDERED'; plan.odno = {};
     log_('US_ORDER', t.tab, describe_(plan));
+    if (plan.manual) { savePlan_(t, plan); return; }
     if (plan.errors.length) alert_('계획 오류: ' + t.tab, describe_(plan));
     plan.orders.forEach(function (o) { plan.odno[o.id] = send_(t, o, DVSN_US); });
     savePlan_(t, plan);
@@ -133,6 +129,7 @@ var PHASES = {
 
 function settle_(t, now, tradeYmd, getClose, getFills) {
   var plan = loadPlan_(t); if (!plan || plan.date !== tradeYmd || plan.status === 'SETTLED') { log_('SETTLE', t.tab, '정산할 계획 없음'); return; }
+  if (plan.manual) { plan.status = 'SETTLED'; savePlan_(t, plan); return; }
   var close = getClose(), raw = isDry_() ? {} : getFills(), fillsById = {}, S = plan.S;
   plan.orders.forEach(function (o) { var f = raw[plan.odno[o.id]]; if (f) fillsById[o.id] = f; });
   if (isDry_()) plan.orders.forEach(function (o) {                    // 모의 체결(로그 확인용): 종가 기준
@@ -144,14 +141,20 @@ function settle_(t, now, tradeYmd, getClose, getFills) {
   var R = IB.apply(t.P, { mode: plan.mode, T: plan.T0, qty: plan.qty0, avg: plan.avg0, cash: plan.cash0, revDay: plan.revDay0 }, plan, fillsById, close, qtyAfter, avgAfter);
   log_('SETTLE', t.tab, (isDry_() ? '[DRY] ' : '') + '종가 ' + close + ' 체결 ' + JSON.stringify(R.rows) + ' → T=' + R.T + ' 모드=' + R.mode + ' ' + R.events.join(','));
   if (!isDry_()) {
-    if (R.rows.length) appendRows(t, Utilities.formatDate(new Date(plan.date.slice(0, 4) + '-' + plan.date.slice(4, 6) + '-' + plan.date.slice(6, 8) + 'T12:00:00+09:00'), 'Asia/Seoul', 'yyyy-MM-dd'), close, R.T, R.rows);
-    else if (R.T !== S.T) setLastT_(t, R.T);
-    saveMode_(t.tab, R.mode, R.revDay); saveClose_(plan.date, t.code, close);
+    var dstr = plan.date.slice(0, 4) + '-' + plan.date.slice(4, 6) + '-' + plan.date.slice(6, 8);
+    if (R.rows.length) appendRows(t, dstr, close, R.T, R.rows, plan.star, plan.tag);
+    else {                                                         // 체결 없는 날: 수량 0, 종가만 기록 (전일종가·5거래일 평균이 이어지도록)
+      appendRows(t, dstr, close, R.T, [{ group: '체결없음', side: 'BUY', qty: 0, price: '' }], plan.star, plan.tag);
+      log_('SETTLE', t.tab, '체결 없음 → 수량 0, 종가 ' + close + ' 기록');
+    }
   }
   plan.status = 'SETTLED'; plan.close = close; plan.fillsById = fillsById; plan.newT = R.T; savePlan_(t, plan);
 }
 
 /** 수동 점검용: 오늘 계획을 주문 없이 로그에 출력 */
 function previewToday() {
-  loadTickers('KR').concat(loadTickers('US')).forEach(function (t) { KIS.use(t.acct); var p = makePlan_(t, kstNow_()); log_('PREVIEW', t.tab, describe_(p)); Logger.log(describe_(p)); });
+  loadTickers('KR').concat(loadTickers('US')).forEach(function (t) {
+    try { var p = planFromSheet_(t, kstNow_()); log_('PREVIEW', t.tab, describe_(p)); Logger.log(t.tab + ' ' + describe_(p)); }
+    catch (e) { log_('PREVIEW', t.tab, 'ERROR ' + e.message); Logger.log(t.tab + ' ERROR ' + e.message); }
+  });
 }

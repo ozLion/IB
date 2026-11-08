@@ -19,8 +19,8 @@ IB.tick = function (P, price) { return P.market === 'KR' ? IB.tickKR(price, P.ty
 IB.rnd = function (P, x) { return P.market === 'KR' ? Math.round(x) : Math.round(x * 100) / 100; };
 IB.floorTick = function (P, p) { var t = IB.tick(P, p); return IB.rnd(P, Math.floor(p / t + 1e-9) * t); };
 IB.ceilTick = function (P, p) { var t = IB.tick(P, p); return IB.rnd(P, Math.ceil(p / t - 1e-9) * t); };
-/** 매수 LOC 가격 = 기준가에서 내림 후 1틱 아래 (LOC는 "종가 ≤ 지정가" 체결) */
-IB.buyBelow = function (P, p) { var f = IB.floorTick(P, p); return IB.rnd(P, f - IB.tick(P, f)); };
+/** 매수 LOC 가격 = (매도 호가 = 기준가 올림) − 1틱. 사용자 시트(M2 = J4 − 호가단위, J4 = CEILING(별지점))와 동일 규칙 → 결정사항 #7 */
+IB.buyBelow = function (P, p) { var c = IB.ceilTick(P, p); return IB.rnd(P, c - IB.tick(P, c)); };
 
 // ───────── 기본 수식 ─────────
 IB.starPct = function (P, T) { return P.starBase - (P.starBase * 2 / P.N) * T; };      // 단위: 소수 (0.15 …)
@@ -136,7 +136,7 @@ IB.apply = function (P, S, plan, fills, close, qtyAfter, avgAfter) {
     if (qtyAfter === 0) { mode = 'N'; T = 0; revDay = 0; events.push('소진 → 사이클 종료'); }
     else if (S.revDay === 1 && close > avgAfter * (1 + P.revExitPct)) { mode = 'N'; revDay = 0; events.push('리버스 종료 → 일반모드'); }
   }
-  T = Math.round(T * 1e6) / 1e6;
+  T = Math.round(T * 1e9) / 1e9;
   return { T: T, mode: mode, revDay: revDay, rows: rows, events: events, groups: g };
 };
 
