@@ -131,16 +131,19 @@ function appendRows(t, dateStr, close, T, rows, star, tag) {
     var last = lastFilledRow_(sh, col), nr = last + 1;
     var dv = sh.getRange(nr, col.DATE).getValue(), pending = dv !== '' && dv !== null && Utilities.formatDate(new Date(dv), 'Asia/Seoul', 'yyyy-MM-dd') === dateStr;
     if (!pending && sh.getRange(nr, col.DATE).getValue() !== '') nr = Math.max(nr, sh.getLastRow() + 1);   // 다른 날짜 행이 이미 있으면 그 아래에
+    var copiedFormula = {};                                              // 열 번호 → 수식으로 복사됐는지
     if (last >= c.FIRST_ROW && col.LAST >= col.FORMULA_FROM) {
       var w = col.LAST - col.FORMULA_FROM + 1, f = sh.getRange(last, col.FORMULA_FROM, 1, w).getFormulasR1C1()[0].map(function (x) { return String(x).charAt(0) === '=' ? x : ''; });
       sh.getRange(nr, col.FORMULA_FROM, 1, w).setFormulasR1C1([f]);
+      f.forEach(function (x, i) { if (x) copiedFormula[col.FORMULA_FROM + i] = true; });
     }
     sh.getRange(nr, col.DATE).setValue(pending ? dv : new Date(dateStr + 'T00:00:00+09:00')).setNumberFormat('yyyy-mm-dd (aaa)');
     sh.getRange(nr, col.T).setValue(T);
     sh.getRange(nr, col.QTY).setValue(r.side === 'SELL' ? -r.qty : r.qty);
     if (r.price !== '' && r.price !== null && r.price !== undefined) sh.getRange(nr, col.PRICE).setValue(r.price);
     sh.getRange(nr, col.CLOSE).setValue(close);
-    if (star) sh.getRange(nr, col.STAR).setValue(Math.round(star));
+    // 별지점: 직전 행이 수식이면 복사된 수식이 계산하므로 쓰지 않음. 값(숫자)일 때만 기록
+    if (star && !copiedFormula[col.STAR]) sh.getRange(nr, col.STAR).setValue(Math.round(star));
     sh.getRange(nr, col.MEMO).setValue('자동 ' + (tag || '') + ' ' + r.group);
   });
   SpreadsheetApp.flush();
