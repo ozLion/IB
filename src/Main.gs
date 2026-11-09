@@ -127,6 +127,15 @@ var PHASES = {
   }
 };
 
+/** 같은 방향(매수/매도)의 체결을 하루 한 행으로 합침: 수량 합계 + 가중평균 가격. (시트의 5거래일 평균이 종가를 날짜당 한 번만 세도록) */
+function mergeRows_(rows) {
+  var by = {};
+  rows.forEach(function (r) {
+    var b = by[r.side] || (by[r.side] = { side: r.side, qty: 0, amt: 0, groups: [] });
+    b.qty += r.qty; b.amt += r.qty * r.price; if (b.groups.indexOf(r.group) < 0) b.groups.push(r.group);
+  });
+  return Object.keys(by).map(function (k) { var b = by[k]; return { side: b.side, qty: b.qty, price: Math.round(b.amt / b.qty * 100) / 100, group: b.groups.join('+') }; });
+}
 function settle_(t, now, tradeYmd, getClose, getFills) {
   var plan = loadPlan_(t); if (!plan || plan.date !== tradeYmd || plan.status === 'SETTLED') { log_('SETTLE', t.tab, '정산할 계획 없음'); return; }
   if (plan.manual) { plan.status = 'SETTLED'; savePlan_(t, plan); return; }
@@ -142,7 +151,7 @@ function settle_(t, now, tradeYmd, getClose, getFills) {
   log_('SETTLE', t.tab, (isDry_() ? '[DRY] ' : '') + '종가 ' + close + ' 체결 ' + JSON.stringify(R.rows) + ' → T=' + R.T + ' 모드=' + R.mode + ' ' + R.events.join(','));
   if (!isDry_()) {
     var dstr = plan.date.slice(0, 4) + '-' + plan.date.slice(4, 6) + '-' + plan.date.slice(6, 8);
-    if (R.rows.length) appendRows(t, dstr, close, R.T, R.rows, plan.star, plan.tag);
+    if (R.rows.length) appendRows(t, dstr, close, R.T, mergeRows_(R.rows), plan.star, plan.tag);
     else {                                                         // 체결 없는 날: 수량 0, 종가만 기록 (전일종가·5거래일 평균이 이어지도록)
       appendRows(t, dstr, close, R.T, [{ group: '체결없음', side: 'BUY', qty: 0, price: '' }], plan.star, plan.tag);
       log_('SETTLE', t.tab, '체결 없음 → 수량 0, 종가 ' + close + ' 기록');
