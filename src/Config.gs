@@ -1,5 +1,5 @@
 /** ===== 설정 ===== 민감값은 코드에 넣지 말고 [프로젝트 설정 → 스크립트 속성]에 저장하세요.
- *  종목 탭의 P9 셀 = 계정 앞 4자리(예: 7441). 그 값이 속성 이름 뒤에 붙습니다.
+ *  종목 탭의 P2 셀 = 계정 앞 4자리(예: 7441). 그 값이 속성 이름 뒤에 붙습니다.
  *  계정별 (필수):  KIS_APP_KEY_<계정>, KIS_APP_SECRET_<계정>, KIS_CANO_<계정>(계좌 앞 8자리), KIS_ACNT_PRDT_CD_<계정>(보통 01)
  *  계정별 (선택):  KIS_MOCK_<계정> = true|false (없으면 공통 KIS_MOCK, 그것도 없으면 false=실전)
  *  공통:           DRY_RUN = true|false (true면 주문 전송 없이 로그만. 기본 true), KIS_MOCK(기본 모의 여부),
@@ -11,8 +11,8 @@ var CFG = {
   // 종목 탭 상단 패널 셀 (사용자 시트 기준). 위치가 바뀌면 여기만 수정
   PANEL: { MARKER_CELL: 'A2', MARKER_TEXT: '종목', TICKER: 'B2', PRINCIPAL: 'B3', N: 'B4', STAR_BASE: 'B5', REV_EXIT: 'B6',
            MODE: 'F2', T: 'H2', QTY: 'H3', PREV_CLOSE: 'H4', AVG: 'H5', CASH: 'F3', BUDGET: 'F4', STAR: 'F6', PHASE: 'F7',
-           MARKET: 'D10', TICK: 'D6', ACCT: 'P9', AUTO: 'R9', AUTO_ON: '자동',
-           SELL1_PRICE: 'J4', SELL1_QTY: 'K4', SELL2_PRICE: 'J5', SELL2_QTY: 'K5',
+           MARKET: 'D10', TICK: 'D6', ACCT: 'P2', AUTO: 'R2', AUTO_ON: '자동',
+           SELL1_PRICE: 'J2', SELL1_QTY: 'K2', SELL2_PRICE: 'J3', SELL2_QTY: 'K3',
            BUY_FIRST_ROW: 2, BUY_LAST_ROW: 10, BUY_PRICE_COL: 'M', BUY_QTY_COL: 'N', BUY_LABEL: 'L3' },
   // 체결 기록 표: 헤더(HEADER_ROW) 이름으로 열을 찾고, 못 찾을 때만 아래 열 글자 사용
   TAB: { HEADER_ROW: 11, FIRST_ROW: 12, DATE: 'A', T: 'B', QTY: 'C', PRICE: 'D', CLOSE: 'E', STAR: 'M', MEMO: 'N' },

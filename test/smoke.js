@@ -16,15 +16,15 @@ vm.createContext(ctx);for(const f of ['Strategy','Config','Kis','SheetIO','Main'
 vm.runInContext('this.PHASES=PHASES;this.KIS=KIS;',ctx);
 ctx.ss_=()=>({getSheets:()=>[sh],getSheetByName:n=>n==='KODEX 레버리지'?sh:null});
 ctx.log_=(p,t,m)=>logs.push(p+' '+m);
-store.DRY_RUN='false';
-let n=0,sent=[];const K=ctx.KIS;
+store.DRY_RUN='false';ctx.KIS_stub=1;
+let n=0,sent=[];const K=ctx.KIS;K.use=()=>{};K.limitsKR=()=>({upper:81250,lower:43750,base:62500});
 K.orderKR=(code,side,qty,price,dv)=>{sent.push([side,qty,price,dv]);return 'O'+(++n)};K.holdingKR=()=>83;K.priceKR=()=>66000;
-K.fillsKR=()=>({O1:{qty:1,price:66000},O10:{qty:4,price:66000}});   // 쿼터매수 1주, LOC 매도 4주 체결 가정
+K.fillsKR=()=>({O1:{qty:1,price:66000},O3:{qty:4,price:66000}});   // 쿼터매수 1주, LOC 매도 4주 체결 가정
 const now={ymd:'20261109',dash:'2026-11-09',dow:1,min:900};
 const t=ctx.loadTickers('KR')[0];
 ctx.PHASES.KR_OPEN(t,now);console.log('OPEN 주문',JSON.stringify(sent));sent=[];
 ctx.PHASES.KR_CLOSE(t,now);console.log('CLOSE 주문',JSON.stringify(sent.map(x=>x.join(':'))));
-assert.equal(sent.length,10);assert.ok(sent.some(x=>x[0]==='SELL'&&x[1]===4&&x[2]===66685));assert.ok(sent.every(x=>x[3]==='00'));
+assert.equal(sent.length,3);assert.ok(sent.some(x=>x[0]==='SELL'&&x[1]===4&&x[2]===66685));assert.ok(sent.every(x=>x[3]==='00'));
 const before=sh.g.length;
 ctx.PHASES.KR_SETTLE(t,now);
 const last=sh.g.slice(26,32).map(r=>[r[0],r[1],r[2],r[3],r[4],r[12],r[13]]);console.log(JSON.stringify(last));

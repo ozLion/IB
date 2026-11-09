@@ -11,7 +11,7 @@ function panel_(sh) {
 }
 function isPanelSheet_(sh) { try { var p = panel_(sh), P = CFG.PANEL; return String(p.get(P.MARKER_CELL)).trim() === P.MARKER_TEXT; } catch (e) { return false; } }
 
-/** 자동 대상 탭 찾기: 패널이 있고 R9(주문 방식)이 '자동', P9(계정)·B2(종목)가 채워진 탭. market: 'KR' | 'US' */
+/** 자동 대상 탭 찾기: 패널이 있고 R2(주문 방식)이 '자동', P2(계정)·B2(종목)가 채워진 탭. market: 'KR' | 'US' */
 function loadTickers(market) {
   var P = CFG.PANEL, out = [];
   ss_().getSheets().forEach(function (sh) {

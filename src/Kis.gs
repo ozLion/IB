@@ -1,9 +1,9 @@
 /** 한국투자증권 Open API 래퍼.  ※ TR_ID·필드명은 변경될 수 있으니 KIS 공식 문서와 대조해 확인하세요. */
 var KIS = { _acct: '' };
-/** 계정 선택: 시트 P9의 앞 4자리 → 아래 속성들을 계정별로 읽음 (KIS_APP_KEY_7441 …) */
+/** 계정 선택: 시트 P2의 앞 4자리 → 아래 속성들을 계정별로 읽음 (KIS_APP_KEY_7441 …) */
 KIS.use = function (acct) {
   acct = String(acct || '').trim();
-  if (!acct) throw new Error('계정(P9) 값이 비어 있습니다');
+  if (!acct) throw new Error('계정(P2) 값이 비어 있습니다');
   KIS._acct = acct;
   ['APP_KEY', 'APP_SECRET', 'CANO', 'ACNT_PRDT_CD'].forEach(function (n) { if (!prop_('KIS_' + n + '_' + acct, '')) throw new Error('스크립트 속성 누락: KIS_' + n + '_' + acct); });
 };

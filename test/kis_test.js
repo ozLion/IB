@@ -35,5 +35,5 @@ KIS.fillsUS('20261109');assert.ok(calls[calls.length-1].url.includes('PDNO=%25')
 store.KIS_MOCK_7441='true';pageResp=[R({rt_cd:'0',output:[]},{tr_cont:'D'})];KIS.fillsUS('20261109');assert.ok(/PDNO=&/.test(calls[calls.length-1].url)&&/CCLD_NCCS_DVSN=00/.test(calls[calls.length-1].url));
 // 계정 분리: 9999 계정은 다른 키/계좌번호 사용, 누락 시 오류
 KIS.use('9999');KIS.orderKR('122630','BUY',1,1000,'00');let c2=calls[calls.length-1];assert.equal(c2.opt.headers.appkey,'K2');assert.equal(JSON.parse(c2.opt.payload).CANO,'87654321');
-assert.throws(()=>KIS.use('1111'),/KIS_APP_KEY_1111/);assert.throws(()=>KIS.use(''),/P9/);
+assert.throws(()=>KIS.use('1111'),/KIS_APP_KEY_1111/);assert.throws(()=>KIS.use(''),/P2/);
 console.log('KIS 요청 구성·계정 분리 테스트 통과');
