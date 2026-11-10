@@ -15,7 +15,7 @@ var CFG = {
            SELL1_PRICE: 'J2', SELL1_QTY: 'K2', SELL2_PRICE: 'J3', SELL2_QTY: 'K3',
            BUY_FIRST_ROW: 2, BUY_LAST_ROW: 10, BUY_PRICE_COL: 'M', BUY_QTY_COL: 'N', BUY_LABEL: 'L3' },
   // 체결 기록 표: 헤더(HEADER_ROW) 이름으로 열을 찾고, 못 찾을 때만 아래 열 글자 사용
-  TAB: { HEADER_ROW: 11, FIRST_ROW: 12, DATE: 'A', T: 'B', QTY: 'C', PRICE: 'D', CLOSE: 'E', STAR: 'M', MEMO: 'N' },
+  TAB: { HEADER_ROW: 11, FIRST_ROW: 12, DATE: 'A', T: 'B', QTY: 'C', PRICE: 'D', CLOSE: 'E', STAR: 'G', MEMO: 'N' },
   DEFAULT_EXCD: 'NAS', TOPUP: false,   // 해외 거래소 / 국내 시간외종가 추가매수 사용 여부
   // 스케줄(KST). 윈도우 안에서만 실행 → 트리거 지연/중복 실행 방지
   SCHEDULE: [
