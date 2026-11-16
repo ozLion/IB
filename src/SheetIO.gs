@@ -134,8 +134,8 @@ function appendRows(t, dateStr, close, T, rows, star, tag) {
     var copiedFormula = {};                                              // 열 번호 → 수식으로 복사됐는지
     if (last >= c.FIRST_ROW && col.LAST >= col.FORMULA_FROM) {
       var w = col.LAST - col.FORMULA_FROM + 1, f = sh.getRange(last, col.FORMULA_FROM, 1, w).getFormulasR1C1()[0].map(function (x) { return String(x).charAt(0) === '=' ? x : ''; });
-      sh.getRange(nr, col.FORMULA_FROM, 1, w).setFormulasR1C1([f]);
-      f.forEach(function (x, i) { if (x) copiedFormula[col.FORMULA_FROM + i] = true; });
+      // 수식 칸만 하나씩 복사. 빈 칸('')을 setFormulasR1C1로 넘기면 Sheets가 '#ERROR!'(잘못된 수식)를 만들어 시트 전체가 깨짐
+      f.forEach(function (x, i) { if (x) { sh.getRange(nr, col.FORMULA_FROM + i).setFormulaR1C1(x); copiedFormula[col.FORMULA_FROM + i] = true; } });
     }
     sh.getRange(nr, col.DATE).setValue(pending ? dv : new Date(dateStr + 'T00:00:00+09:00')).setNumberFormat('yyyy-mm-dd (aaa)');
     sh.getRange(nr, col.T).setValue(T);
