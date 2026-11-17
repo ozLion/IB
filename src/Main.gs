@@ -36,9 +36,16 @@ function krOpen_(ymd) {
   var ts = loadTickers('KR'); if (!ts.length) return false;
   KIS.use(ts[0].acct); return KIS.isKrOpen(ymd);
 }
-function cleanupFlags_(now) {
-  var p = PropertiesService.getScriptProperties(), all = p.getProperties(), cut = Number(Utilities.formatDate(new Date(Date.now() - 5 * 86400000), 'Asia/Seoul', 'yyyyMMdd'));
-  Object.keys(all).forEach(function (k) { var m = /^done:(\d{8}):/.exec(k); if (m && Number(m[1]) < cut) p.deleteProperty(k); });
+/** 날짜가 붙은 프로퍼티(실행 완료 표시 done:YYYYMMDD:*, 휴장일 캐시 hol:YYYYMMDD)는 어제보다 오래된 것을 삭제.
+ *  매일 00:05에 자동 실행. 에디터에서 직접 한 번 실행해도 됨(이미 쌓인 것 정리). 계획(plan:*)·토큰은 덮어쓰기라 늘지 않음 */
+function cleanupFlags_() {
+  var p = PropertiesService.getScriptProperties(), all = p.getProperties(), n = 0,
+      cut = Number(Utilities.formatDate(new Date(Date.now() - 86400000), 'Asia/Seoul', 'yyyyMMdd'));
+  Object.keys(all).forEach(function (k) {
+    var m = /^done:(\d{8}):/.exec(k) || /^hol:(\d{8})$/.exec(k);
+    if (m && Number(m[1]) < cut) { p.deleteProperty(k); n++; }
+  });
+  return n;
 }
 
 function runPhase_(phase, now) {
