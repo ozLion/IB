@@ -132,6 +132,8 @@ function appendRows(t, dateStr, close, T, rows, star, tag) {
     var dv = sh.getRange(nr, col.DATE).getValue(), pending = dv !== '' && dv !== null && Utilities.formatDate(new Date(dv), 'Asia/Seoul', 'yyyy-MM-dd') === dateStr;
     if (!pending && sh.getRange(nr, col.DATE).getValue() !== '') nr = Math.max(nr, sh.getLastRow() + 1);   // 다른 날짜 행이 이미 있으면 그 아래에
     var copiedFormula = {};                                              // 열 번호 → 수식으로 복사됐는지
+    // 서식(숫자 형식·배경색·글꼴·테두리)은 A열부터 끝 열까지 직전 체결 행 그대로 복사 (값·수식은 아래에서 따로 기록)
+    if (last >= c.FIRST_ROW) { var fw = Math.max(col.LAST, col.MEMO); sh.getRange(last, 1, 1, fw).copyTo(sh.getRange(nr, 1, 1, fw), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false); }
     if (last >= c.FIRST_ROW && col.LAST >= col.FORMULA_FROM) {
       var w = col.LAST - col.FORMULA_FROM + 1, f = sh.getRange(last, col.FORMULA_FROM, 1, w).getFormulasR1C1()[0].map(function (x) { return String(x).charAt(0) === '=' ? x : ''; });
       // 수식 칸만 하나씩 복사. 빈 칸('')을 setFormulasR1C1로 넘기면 Sheets가 '#ERROR!'(잘못된 수식)를 만들어 시트 전체가 깨짐
