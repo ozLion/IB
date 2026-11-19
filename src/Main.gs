@@ -18,22 +18,32 @@ function tick() {
   try {
     var p = PropertiesService.getScriptProperties();
     CFG.SCHEDULE.forEach(function (s) {
-      var at = hm_(s.propAt ? prop_(s.propAt, s.def) : s.at);
+      var at = hm_(s.propAt ? prop_(s.propAt, s.def) : s.at) + (s.market === 'KR' && s.phase !== 'KR_OPEN' ? krDelay_(now.ymd) : 0);   // 개장 지연일(수능 등)은 장 마감 관련 단계만 미룸
       if (now.min < at || now.min >= at + s.win) return;
       var dowOk = s.days === 'MF' ? (now.dow >= 1 && now.dow <= 5) : (now.dow >= 2 && now.dow <= 6);
       if (!dowOk) return;
       var key = 'done:' + now.ymd + ':' + s.phase;
       if (p.getProperty(key)) return;
       p.setProperty(key, '1');                                    // 먼저 표시 → 중복 실행 방지(실패 시 알림, 자동 재시도는 하지 않음: 주문 중복 위험)
-      if (s.market === 'KR' && !krOpen_(now.ymd)) { log_(s.phase, '-', '휴장일 → 건너뜀'); return; }
+      if (s.market === 'KR') {
+        var open = krOpen_(now.ymd);
+        if (open === null) { log_(s.phase, '-', '자동 대상 탭 없음(시트 R2가 수동?) → 건너뜀'); return; }
+        if (!open) { log_(s.phase, '-', '휴장일 → 건너뜀'); return; }
+      }
       runPhase_(s.phase, now);
     });
     if (now.min === 5) cleanupFlags_(now);
   } finally { lock.releaseLock(); }
 }
+/** 국내 장 시간 지연일 처리(수능일 등 1시간 늦게 개장). 스크립트 속성 KR_DELAY = '20261119:60' (날짜:미룰 분).
+ *  해당 날짜에만 적용되고 다음 날은 자동으로 무시됨 → 지우지 않아도 안전. 대상: KR_CLOSE/SETTLE/TOPUP/FINAL (KR_OPEN은 장 시작 전 계획 수립이라 그대로) */
+function krDelay_(ymd) {
+  var m = /^(\d{8}):(\d{1,3})$/.exec(String(prop_('KR_DELAY', '')).replace(/\s+/g, ''));
+  return m && m[1] === ymd ? Number(m[2]) : 0;
+}
 /** 휴장일 조회는 첫 국내 종목의 계정으로 1회만 (결과는 날짜별 캐시) */
 function krOpen_(ymd) {
-  var ts = loadTickers('KR'); if (!ts.length) return false;
+  var ts = loadTickers('KR'); if (!ts.length) return null;                 // 자동 대상 탭 없음(R2 수동 등) → 휴장 여부를 알 수 없음
   KIS.use(ts[0].acct); return KIS.isKrOpen(ymd);
 }
 /** 날짜가 붙은 프로퍼티(실행 완료 표시 done:YYYYMMDD:*, 휴장일 캐시 hol:YYYYMMDD)는 어제보다 오래된 것을 삭제.
