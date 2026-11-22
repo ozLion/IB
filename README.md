@@ -1,6 +1,6 @@
 # 무한매수법 4.0 자동매매 (Google Apps Script + 한국투자증권 Open API)
 
-`src/` 안의 `.gs` 파일과 `appsscript.json`을 Apps Script 프로젝트에 올립니다 (`clasp push` 또는 복사/붙여넣기).
+`src/` 안의 `.gs` 파일과 `appsscript.json`을 Apps Script 프로젝트에 올립니다 (`clasp push` 또는 복사/붙여넣기). clasp 설치와 사용법은 아래 [clasp로 배포하기](#clasp로-배포하기) 참고.
 
 ## 파일
 | 파일 | 역할 |
@@ -21,6 +21,55 @@
 ### 시트에서 읽는 값
 모드 F2, T H2, 잔고수량 H3, 전일종가 H4, 평단 H5, 잔금 F3, 매수예산 F4, 별지점 F6, **다음 단계 F7(N0/N1/N2/R1/R2/R3)**, 매수표 M2:N10(가격/수량), 매도 J2/K2(별지점 LOC), J3/K3(일반 3/4 지정가), 별%기준·목표수익률 B5, 리버스 종료 B6, 분할수 B4.
 스크립트는 시트의 값을 그대로 주문하고, 독립 계산(Strategy.gs)과 달라지면 `자동로그`에 ⚠로 남깁니다. 체결 후에는 로그 표에 날짜·T·수량·매매가·종가·별지점·메모를 기록하고 계산 열은 직전 행의 수식을 복사합니다.
+
+## clasp로 배포하기
+`clasp`는 내 컴퓨터의 소스를 **Apps Script 프로젝트로 올리는**(Google 공식) 명령줄 도구입니다. 에디터에 복사/붙여넣기 하는 대신 `clasp push` 한 번으로 `src/`의 파일을 모두 올립니다.
+
+| 명령 | 하는 일 |
+|---|---|
+| `git push` | 소스를 **GitHub**에 올림 (백업·이력) |
+| `clasp push` | 소스를 **Apps Script**에 올림 (실제로 실행되는 코드) |
+| `clasp pull` | Apps Script의 코드를 컴퓨터로 내려받음 |
+
+> GitHub에 올렸다고 Apps Script가 바뀌지는 않습니다. 코드를 고치면 `clasp push`(실행용)와 `git push`(백업용) **둘 다** 해야 합니다.
+
+### 설치 (Windows, 최초 1회)
+1. **Node.js(LTS)** 설치: <https://nodejs.org> 에서 LTS 설치 후 새 터미널에서 `node -v`, `npm -v`로 확인.
+2. **clasp** 설치: `npm install -g @google/clasp` → `clasp -v`로 확인.
+3. **Apps Script API 켜기**: <https://script.google.com/home/usersettings> 에서 *Google Apps Script API*를 **사용**으로 변경 (꺼져 있으면 push가 실패).
+4. **로그인**: `clasp login` → 브라우저에서 Apps Script 프로젝트 소유 계정으로 허용.
+
+### 프로젝트 연결 (최초 1회)
+저장소 폴더(예: `C:\VSCODE\infinite_buy_gas`)에 `.clasp.json`을 만듭니다. `.clasp.json.example`을 복사해서 `scriptId`만 내 것으로 바꾸면 됩니다.
+```json
+{ "scriptId": "<스크립트 ID>", "rootDir": "src" }
+```
+- **스크립트 ID**: Apps Script 에디터 → ⚙ 프로젝트 설정 → *스크립트 ID*.
+- `rootDir`이 `src`여야 `src/*.gs`와 `src/appsscript.json`이 프로젝트 루트로 올라갑니다.
+- `.clasp.json`은 `.gitignore`에 들어 있어 GitHub에는 올라가지 않습니다.
+- 처음부터 받아오려면: `clasp clone <스크립트 ID> --rootDir src`
+
+### 평소 사용 순서
+```
+(src/*.gs 수정)
+clasp push                 # Apps Script에 반영
+git add .
+git commit -m "변경 내용"
+git push                   # GitHub에 백업
+```
+| 명령 | 설명 |
+|---|---|
+| `clasp status` | 올라갈(바뀐) 파일 목록 확인 |
+| `clasp push -w` | 파일 저장 때마다 자동 push (감시 모드, Ctrl+C로 종료) |
+| `clasp open-script` | 브라우저에서 Apps Script 에디터 열기 |
+| `clasp pull` | 에디터에서 직접 고친 내용을 컴퓨터로 받기 |
+| `clasp logs` | 최근 실행 로그 보기 |
+
+### 주의
+- `clasp push`는 해당 프로젝트의 파일을 **덮어씁니다.** 에디터에서 직접 고친 내용이 있으면 먼저 `clasp pull`로 받아 두세요.
+- push 후에는 에디터를 새로고침하고 바뀐 함수(예: `Ctrl+F`로 검색)가 보이는지 확인합니다. 스크립트 **속성**(키·`DRY_RUN` 등)은 push로 바뀌지 않습니다.
+- push 해도 **트리거는 그대로** 유지됩니다(매분 `tick()`이 새 코드로 실행). 매매 시간(09:05, 15:20~16:10) 중에는 push를 피하세요.
+- 오류별 대처: `User has not enabled the Apps Script API` → 설치 3단계, `Could not read API credentials` / 로그인 만료 → `clasp login`, `Missing required parameters: scriptId` → `.clasp.json` 위치(저장소 루트) 확인.
 
 ## 일정 (KST)
 국내: 09:05 계획+3/4 지정가 매도 → 15:20 종가단일가 지정가(LOC 대체) → 15:35 체결 반영 → 15:40 시간외종가 추가매수(옵션) → 16:10 확인.
