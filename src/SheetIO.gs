@@ -151,6 +151,20 @@ function appendRows(t, dateStr, close, T, rows, star, tag) {
   SpreadsheetApp.flush();
 }
 
+/** 시간외종가 보충 체결을 '오늘 기록된 매수 행'에 합침(수량 합계 + 가중평균 가격). 같은 날짜 행이 둘이 되면 시트의 5거래일 평균에 종가가 두 번 들어가기 때문.
+ *  오늘 행이 없거나 매도 행이면 false(호출 측에서 새 행으로 기록) */
+function addToTodayBuyRow_(t, dateStr, qty, price, group) {
+  var sh = ss_().getSheetByName(t.tab), col = tabCols_(sh), last = lastFilledRow_(sh, col);
+  if (last < CFG.TAB.FIRST_ROW) return false;
+  var dv = sh.getRange(last, col.DATE).getValue();
+  if (dv === '' || dv === null || Utilities.formatDate(new Date(dv), 'Asia/Seoul', 'yyyy-MM-dd') !== dateStr) return false;
+  var q0 = num_(sh.getRange(last, col.QTY).getValue()); if (q0 < 0) return false;
+  var p0 = num_(sh.getRange(last, col.PRICE).getValue()), nq = q0 + qty, np = q0 > 0 ? Math.round((q0 * p0 + qty * price) / nq * 100) / 100 : price;
+  sh.getRange(last, col.QTY).setValue(nq); sh.getRange(last, col.PRICE).setValue(np);
+  var mc = sh.getRange(last, col.MEMO); mc.setValue(String(mc.getValue() || '') + '+' + group);
+  SpreadsheetApp.flush(); return true;
+}
+
 function installSheets() {
   var ss = ss_(), sh = ss.getSheetByName(CFG.SHEET_LOG);
   if (!sh) { sh = ss.insertSheet(CFG.SHEET_LOG); sh.getRange(1, 1, 1, 4).setValues([['시각', '단계', '종목', '내용']]).setFontWeight('bold'); }

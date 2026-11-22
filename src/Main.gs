@@ -114,8 +114,9 @@ var PHASES = {
   KR_SETTLE: function (t, now) { settle_(t, now, now.ymd, function () { return KIS.priceKR(t.code); }, function () { return KIS.fillsKR(now.ymd, t.code); }); },
   /** 15:40 국내: 남은 예산 시간외종가 추가매수(옵션). 체결 안 되면 잔금으로 남김 */
   KR_TOPUP: function (t, now) {
-    if (!t.topup) return;
     var plan = loadPlan_(t); if (!plan || plan.status !== 'SETTLED' || plan.date !== now.ymd) return;
+    var unit = 0; plan.orders.forEach(function (o) { if (o.group === 'ladder' && o.side === 'BUY') unit = Math.max(unit, o.qty); });
+    if (!t.topup && unit < 2) return;                               // 줍줍 단위가 2주 이상인 탭만 자동 사용(1주 단위는 잔금이 1주 미만이라 불필요). CFG.TOPUP=true면 모든 탭
     var q = IB.topupQty(t.P, plan, plan.fillsById || {}, plan.close);
     log_('KR_TOPUP', t.tab, '추가매수 수량 ' + q + ' @종가 ' + plan.close);
     if (q > 0) { plan.topupOdno = isDry_() ? 'DRY-topup' : KIS.orderKR(t.code, 'BUY', q, 0, '06'); plan.topupQty = q; savePlan_(t, plan); }
@@ -124,7 +125,10 @@ var PHASES = {
   KR_FINAL: function (t, now) {
     var plan = loadPlan_(t); if (!plan || !plan.topupOdno || plan.topupDone || isDry_()) return;
     var f = KIS.fillsKR(now.ymd, t.code)[plan.topupOdno];
-    if (f) { appendRows(t, now.dash, plan.close, plan.newT, [{ group: 'topup', side: 'BUY', qty: f.qty, price: f.price }], plan.star, plan.tag); log_('KR_FINAL', t.tab, '시간외종가 체결 ' + f.qty + '@' + f.price); }
+    if (f) {
+      if (!addToTodayBuyRow_(t, now.dash, f.qty, f.price, 'topup')) appendRows(t, now.dash, plan.close, plan.newT, [{ group: 'topup', side: 'BUY', qty: f.qty, price: f.price }], plan.star, plan.tag);
+      log_('KR_FINAL', t.tab, '시간외종가 체결 ' + f.qty + '@' + f.price + ' → 오늘 행에 합산');
+    }
     else log_('KR_FINAL', t.tab, '시간외종가 미체결 → 잔금 유지');
     plan.topupDone = true; savePlan_(t, plan);
   },
